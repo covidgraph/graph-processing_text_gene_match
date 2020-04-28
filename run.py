@@ -66,7 +66,7 @@ if __name__ == '__main__':
             while not index_populated:
 
                 for row in graph.run("CALL db.indexes()"):
-                    log.debug("Full rows: {}".format(row))
+
                     if row["indexName"] == FULLTEXT_INDEX_NAME:
                         log.debug("Index name found, result row: {}".format(row))
                         if row["state"] == 'ONLINE':

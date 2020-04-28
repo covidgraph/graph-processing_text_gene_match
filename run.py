@@ -18,7 +18,7 @@ GC_NEO4J_PASSWORD = os.getenv('GC_NEO4J_PASSWORD', 'test')
 RUN_MODE = os.getenv('RUN_MODE', 'prod')
 
 FULLTEXT_INDEX_NAME = 'fragmentGeneSymbol'
-CUSTOM_LUCENE_ANALYZER = 'german'
+CUSTOM_LUCENE_ANALYZER = 'synonym'
 
 
 for v in [GC_NEO4J_URL, GC_NEO4J_USER, GC_NEO4J_PASSWORD]:
@@ -64,15 +64,18 @@ if __name__ == '__main__':
             # wait until index is created
             index_populated = False
             while not index_populated:
-                for row in graph.run("CALL db.indexes"):
+
+                for row in graph.run("CALL db.indexes()"):
+                    log.debug("Full rows: {}".format(row))
                     if row["indexName"] == FULLTEXT_INDEX_NAME:
                         log.debug("Index name found, result row: {}".format(row))
                         if row["state"] == 'ONLINE':
                             log.info("Index is populated")
                             index_populated = True
                             break
-                    log.info("Wait 10 seconds and check for index again")
-                    sleep(10)
+
+                log.info("Wait 10 seconds and check for index again")
+                sleep(10)
 
             # start creating data
 

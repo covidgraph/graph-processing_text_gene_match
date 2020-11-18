@@ -3,6 +3,7 @@ import sys
 import logging
 import py2neo
 from time import sleep
+import json
 
 logging.basicConfig(level=logging.DEBUG)
 logging.getLogger('py2neo.connect.bolt').setLevel(logging.WARNING)
@@ -12,18 +13,24 @@ logging.getLogger('neobolt').setLevel(logging.WARNING)
 
 log = logging.getLogger(__name__)
 
-GC_NEO4J_URL = os.getenv('GC_NEO4J_URL', 'bolt://localhost:7687')
-GC_NEO4J_USER = os.getenv('GC_NEO4J_USER', 'neo4j')
-GC_NEO4J_PASSWORD = os.getenv('GC_NEO4J_PASSWORD', 'test')
+NEO4J_CONFIG_STRING = os.getenv("NEO4J")
+
+try:
+    log.info(NEO4J_CONFIG_STRING)
+    NEO4J_CONFIG_DICT = json.loads(NEO4J_CONFIG_STRING)
+except json.decoder.JSONDecodeError:
+    # try to replace single quotes with double quotes
+    # JSON always expects double quotes, common mistake when writing JSON strings
+    NEO4J_CONFIG_STRING = NEO4J_CONFIG_STRING.replace("'", '"')
+    log.info(NEO4J_CONFIG_STRING)
+    NEO4J_CONFIG_DICT = json.loads(NEO4J_CONFIG_STRING)
+
+log.info(f'dict {NEO4J_CONFIG_DICT}')
+
 RUN_MODE = os.getenv('RUN_MODE', 'prod')
 
 FULLTEXT_INDEX_NAME = 'fragmentGeneSymbol'
 CUSTOM_LUCENE_ANALYZER = 'synonym'
-
-
-for v in [GC_NEO4J_URL, GC_NEO4J_USER, GC_NEO4J_PASSWORD]:
-    log.debug(v)
-
 
 def get_lucene_analyzer_names(graph):
     """
@@ -47,7 +54,7 @@ if __name__ == '__main__':
     if RUN_MODE.lower() == 'test':
         log.info("There are no tests yet")
     else:
-        graph = py2neo.Graph(GC_NEO4J_URL, user=GC_NEO4J_USER, password=GC_NEO4J_PASSWORD)
+        graph = py2neo.Graph(**NEO4J_CONFIG_DICT)
 
         if CUSTOM_LUCENE_ANALYZER in get_lucene_analyzer_names(graph):
 
@@ -57,7 +64,7 @@ if __name__ == '__main__':
             try:
                 log.info("Create fulltext index, wait until ONLINE")
                 graph.run(query_create_fulltext_index)
-            except py2neo.database.ClientError:
+            except py2neo.ClientError:
                 log.info("Error on index create, it likely exists already.")
                 log.info("If the custom analyzer is not available the script will fail later")
 
@@ -66,13 +73,20 @@ if __name__ == '__main__':
             while not index_populated:
 
                 for row in graph.run("CALL db.indexes()"):
-
-                    if row["indexName"] == FULLTEXT_INDEX_NAME:
-                        log.debug("Index name found, result row: {}".format(row))
-                        if row["state"] == 'ONLINE':
-                            log.info("Index is populated")
-                            index_populated = True
-                            break
+                    if 'indexName' in row:
+                        if row["indexName"] == FULLTEXT_INDEX_NAME:
+                            log.debug("Index name found, result row: {}".format(row))
+                            if row["state"] == 'ONLINE':
+                                log.info("Index is populated")
+                                index_populated = True
+                                break
+                    elif 'name' in row:
+                        if row["name"] == FULLTEXT_INDEX_NAME:
+                            log.debug("Index name found, result row: {}".format(row))
+                            if row["state"] == 'ONLINE':
+                                log.info("Index is populated")
+                                index_populated = True
+                                break
 
                 log.info("Wait 10 seconds and check for index again")
                 sleep(10)

@@ -6,8 +6,8 @@ from time import sleep
 import json
 
 logging.basicConfig(level=logging.DEBUG)
-logging.getLogger('py2neo.connect.bolt').setLevel(logging.WARNING)
-logging.getLogger('py2neo.connect').setLevel(logging.WARNING)
+logging.getLogger('py2neo.client.bolt').setLevel(logging.WARNING)
+logging.getLogger('py2neo.client').setLevel(logging.WARNING)
 logging.getLogger('graphio').setLevel(logging.WARNING)
 logging.getLogger('neobolt').setLevel(logging.WARNING)
 
@@ -73,14 +73,14 @@ if __name__ == '__main__':
             while not index_populated:
 
                 for row in graph.run("CALL db.indexes()"):
-                    if 'indexName' in row:
+                    if 'indexName' in row.keys():
                         if row["indexName"] == FULLTEXT_INDEX_NAME:
                             log.debug("Index name found, result row: {}".format(row))
                             if row["state"] == 'ONLINE':
                                 log.info("Index is populated")
                                 index_populated = True
                                 break
-                    elif 'name' in row:
+                    elif 'name' in row.keys():
                         if row["name"] == FULLTEXT_INDEX_NAME:
                             log.debug("Index name found, result row: {}".format(row))
                             if row["state"] == 'ONLINE':

@@ -94,7 +94,7 @@ if __name__ == '__main__':
             # start creating data
 
             log.info("skip gene symbols with special characters in search")
-            query_skip_special_char = """MATCH (gs:GeneSymbol)
+            query_skip_special_char = """MATCH (gs:Gene {type: 'symbol'})
     WHERE gs.sid contains('(')
     OR gs.sid contains(')')
     OR gs.sid contains('/')
@@ -109,7 +109,7 @@ if __name__ == '__main__':
             graph.run(query_skip_special_char)
 
             log.info("skip gene symbols of length 1")
-            query_skip_length_one = """MATCH (gs:GeneSymbol)
+            query_skip_length_one = """MATCH (gs:Gene {type: 'symbol'})
     WHERE size(gs.sid) = 1
     SET gs:OmitLength"""
 
@@ -117,7 +117,7 @@ if __name__ == '__main__':
 
             log.info("match gene symbols against word list to exclude symbols that are common words")
 
-            query_skip_common_words = """MATCH (gs:GeneSymbol), (w:Word)
+            query_skip_common_words = """MATCH (gs:Gene {type: 'symbol'}), (w:Word)
     WHERE toLower(gs.sid) = toLower(w.value)
     AND w.match11 = True
     SET gs:OmitWord"""
@@ -126,7 +126,7 @@ if __name__ == '__main__':
 
             log.info("match gene symbols against :Fragment fulltext index")
             query_match_genes_fragments = """CALL apoc.periodic.iterate(
-        \"MATCH (gs:GeneSymbol) WHERE NOT gs:OmitWord AND NOT gs:OmitSpecialChar AND NOT gs:OmitLength RETURN gs\",
+        \"MATCH (gs:Gene {type: 'symbol'}) WHERE NOT gs:OmitWord AND NOT gs:OmitSpecialChar AND NOT gs:OmitLength RETURN gs\",
         \"CALL db.index.fulltext.queryNodes('fragmentGeneSymbol', gs.sid) YIELD node, score
         MERGE (gs)<-[r:MENTIONS]-(node) SET r.score = score\",
         {batchSize: 10, parallel: false, iterateList: true});"""
